@@ -13,9 +13,8 @@ using Vector3 = UnityEngine.Vector3;
 
 public class PlayerController : MonoBehaviour
 {
-    public float BASE_SPEED = 3f;
-
     Animator anim;
+    Rigidbody rigidbody;
 
     private const String BOOL_IDLE = "idle";
     private const String BOOL_RUN = "run";
@@ -25,12 +24,23 @@ public class PlayerController : MonoBehaviour
     void Awake()
     {
         this.anim = this.GetComponent<Animator>();
+        this.rigidbody = this.GetComponent<Rigidbody>();
     }
 
     // Start is called before the first frame update
     void Start()
     {
         
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        print("COLLIDED");
+
+        rigidbody.velocity = Vector3.zero;
+
+        
+
     }
 
     void Animate(Animator anim, String animation)
@@ -58,7 +68,7 @@ public class PlayerController : MonoBehaviour
     {
 
         float rotSpeed = 8;
-        float moveSpeed = Input.GetKey(KeyCode.LeftShift) ? 5 : 3;
+        float moveSpeed = Input.GetKey(KeyCode.LeftShift) ? 6 : 4;
 
         forward = Camera.main.transform.forward;
         forward.y = 0;
@@ -69,28 +79,35 @@ public class PlayerController : MonoBehaviour
         {
             Vector3 direction = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical")); // setup a direction Vector based on keyboard input. GetAxis returns a value between -1.0 and 1.0. If the A key is pressed, GetAxis(HorizontalKey) will return -1.0. If D is pressed, it will return 1.0
 
-            Vector3 rightMovement = right * moveSpeed
-                //* Time.deltaTime
-                * Input.GetAxis("Horizontal"); // Our right movement is based on the right vector, movement speed, and our GetAxis command. We multiply by Time.deltaTime to make the movement smooth.
-            Vector3 upMovement = forward * moveSpeed
-                //* Time.deltaTime
-                * Input.GetAxis("Vertical"); // Up movement uses the forward vector, movement speed, and the vertical axis inputs.Vector3 heading = Vector3.Normalize(rightMovement + upMovement); // This creates our new direction. By combining our right and forward movements and normalizing them, we create a new vector that points in the appropriate direction with a length no greater than 1.0transform.forward = heading; // Sets forward direction of our game object to whatever direction we're moving in
-
-            Vector3 newPos = transform.position + rightMovement + upMovement;
-            print(rightMovement + " " + upMovement);
-            transform.position = newPos;
-
-
-            if (moveSpeed == 0) Animate(anim, BOOL_IDLE);
-            else if (moveSpeed == 3) Animate(anim, BOOL_RUN);
-            else Animate(anim, BOOL_SPRINT);
-
-
-            Vector3 heading = Vector3.Normalize(rightMovement + upMovement);
-            if (heading != Vector3.zero)
+            if(direction != Vector3.zero)
             {
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(heading), Time.deltaTime * rotSpeed);
+                Vector3 rightMovement = right * moveSpeed
+                    //* Time.deltaTime
+                    * Input.GetAxis("Horizontal"); // Our right movement is based on the right vector, movement speed, and our GetAxis command. We multiply by Time.deltaTime to make the movement smooth.
+                Vector3 upMovement = forward * moveSpeed
+                    //* Time.deltaTime
+                    * Input.GetAxis("Vertical"); // Up movement uses the forward vector, movement speed, and the vertical axis inputs.Vector3 heading = Vector3.Normalize(rightMovement + upMovement); // This creates our new direction. By combining our right and forward movements and normalizing them, we create a new vector that points in the appropriate direction with a length no greater than 1.0transform.forward = heading; // Sets forward direction of our game object to whatever direction we're moving in
+
+                Vector3 newPos = transform.position + rightMovement + upMovement;
+                transform.position = newPos;
+
+
+                if (moveSpeed == 0) Animate(anim, BOOL_IDLE);
+                else if (moveSpeed == 4) Animate(anim, BOOL_RUN);
+                else Animate(anim, BOOL_SPRINT);
+
+
+                Vector3 heading = Vector3.Normalize(rightMovement + upMovement);
+                if (heading != Vector3.zero)
+                {
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(heading), Time.deltaTime * rotSpeed);
+                }
             }
+            else
+            {
+                Animate(anim, BOOL_IDLE);
+            }
+
         }
         else
         {
@@ -100,23 +117,5 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    void Move()
-    {
-        
-    }
-
-    float PythDist(Collection<float> args)
-    {
-        if (args.Count == 0) return 0;
-
-        double num = 0;
-        foreach(float f in args)
-        {
-            num += Math.Pow((double) f, 2);
-        }
-
-        if (num == 0) return 0;
-        else return (float) Math.Sqrt(num);
-    }
     
 }
