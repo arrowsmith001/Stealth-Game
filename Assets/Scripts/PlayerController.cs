@@ -24,7 +24,6 @@ public class PlayerController : MonoBehaviour
     Animator anim;
     new Rigidbody rigidbody;
     new CapsuleCollider collider;
-
     CharacterController controller;
 
     private const String BOOL_IDLE = "idle";
@@ -134,11 +133,11 @@ public class PlayerController : MonoBehaviour
 
         if (Physics.Raycast(transform.position, transform.up, out upHit, Mathf.Infinity, ~(1 << 8)))
         {
-            print((upHit.collider.tag == "Wall") + " " + upHit.distance + " " + isCrouching);
+            //print((upHit.collider.tag == "Wall") + " " + upHit.distance + " " + isCrouching);
 
             if (upHit.distance < 120 && isCrouching)
             {
-                print("STOPPED upHit: " + upHit.distance);
+                //print("STOPPED upHit: " + upHit.distance);
                 return;
             }
         }
