@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,10 +12,13 @@ public class BillBoard : MonoBehaviour
     public Sprite[] images;
 
     Sprite alertImage;
+    Sprite targetImage;
 
     private void Awake()
     {
         alertImage = images[0];
+        targetImage = images[1];
+
         board = transform.GetComponent<Image>();
         board.gameObject.SetActive(false);
 
@@ -41,5 +45,22 @@ public class BillBoard : MonoBehaviour
     {
         transform.LookAt(transform.position + Camera.main.transform.rotation * Vector3.forward,
             Camera.main.transform.rotation * Vector3.up);
+    }
+
+    public void OnTarget()
+    {
+        StopAllCoroutines();
+
+        board.gameObject.SetActive(true);
+
+        board.sprite = targetImage;
+    }
+
+ 
+
+    public void CancelTargeting()
+    {
+        board.sprite = null;
+        board.gameObject.SetActive(false);
     }
 }

@@ -17,12 +17,12 @@ public class CameraFollow : MonoBehaviour
         if(Input.anyKeyDown)
         {
 
-            if (Input.GetKeyDown(KeyCode.Z))
+            if (Input.GetKeyDown(KeyCode.X))
              {
                 currentYRotation = (currentYRotation + 90);
 
             }
-            if (Input.GetKeyDown(KeyCode.X))
+            if (Input.GetKeyDown(KeyCode.Z))
             {
                 currentYRotation = (currentYRotation - 90);
             }

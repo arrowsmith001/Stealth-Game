@@ -160,4 +160,14 @@ public class EnemyScript : MonoBehaviour
 
 
     }
+
+    public void OnTargeted()
+    {
+        billBoard.OnTarget();
+    }
+
+    public void CancelTargeting()
+    {
+        billBoard.CancelTargeting();
+    }
 }

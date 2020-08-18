@@ -24,6 +24,7 @@ public class PlayerController : MonoBehaviour
     Animator anim;
     new Rigidbody rigidbody;
     new CapsuleCollider collider;
+
     CharacterController controller;
 
     private const String BOOL_IDLE = "idle";
@@ -40,7 +41,21 @@ public class PlayerController : MonoBehaviour
         this.controller = this.GetComponent<CharacterController>();
 
         rigidbody.freezeRotation = true;
+
+        vaultWarmup = VAULT_WARMUP_TIME;
     }
+
+    Vector3? givenVaultPos = null;
+    public void OfferVaultPos(Vector3 vector3)
+    {
+        this.givenVaultPos = vector3;
+    }
+
+    public void RevokeVaultPos()
+    {
+        this.givenVaultPos = null;
+    }
+
 
     // Start is called before the first frame update
     void Start()
@@ -49,6 +64,7 @@ public class PlayerController : MonoBehaviour
     }
 
     bool isColliding = false;
+    bool isTouchingEnemy = false;
 
     private void OnCollisionEnter(Collision collision)
     {
@@ -63,8 +79,14 @@ public class PlayerController : MonoBehaviour
     {
         if (collision.collider.tag == "Wall")
         {
-           // print("COLLIDING WITH WALL");
+            // print("COLLIDING WITH WALL");
             isColliding = true;
+        }
+
+        if (collision.collider.tag == "Enemy")
+        {
+            // print("COLLIDING WITH WALL");
+            isTouchingEnemy = true;
         }
     }
     private void OnCollisionExit(Collision collision)
@@ -97,12 +119,19 @@ public class PlayerController : MonoBehaviour
     Vector3 forward;
     Vector3 right;
 
+    Vector3? savedVaultPos;
+    bool vaulting = false;
+
+    public float VAULT_WARMUP_TIME = 0.5f;
+    float vaultWarmup;
+
+    int ignorePlayerMask = ~(1 << 8);
+
     // Update is called once per frame
     void Update()
     {
 
         RaycastHit upHit;
-        int ignorePlayerMask = ~(1 << 8);
 
         if (Physics.Raycast(transform.position, transform.up, out upHit, Mathf.Infinity, ignorePlayerMask))
         {
@@ -114,6 +143,10 @@ public class PlayerController : MonoBehaviour
             Debug.DrawLine(transform.position, fwdHit.point, Color.red);
         }
 
+        CheckForEnemies();
+
+     
+
         if (Input.GetKeyDown(KeyCode.Space))
         {
             ToggleCrouching();
@@ -124,8 +157,100 @@ public class PlayerController : MonoBehaviour
             ToggleCrouching();
         }
 
-        Move();
+        if(Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            // Attack!
+            if(enemyTarget != null)
+            {
+                print("Killed");
+
+            } // Then resolve vaulting
+            else if(givenVaultPos != null)
+            {
+
+            savedVaultPos = givenVaultPos;
+            vaulting = true;
+            }
+        }
+
+        if(vaulting)
+        {
+            if (vaultWarmup > 0) vaultWarmup -= Time.deltaTime;
+            else
+            {
+                Vault();
+            }
+            
+        }
+
+
+        if (!vaulting)
+        {
+            Move();
+        }
     }
+
+    public float enemyCheckDistance = 10000;
+    public int enemyChecknH = 8;
+    public float enemeyCheckH = 0.7f;
+
+    private void CheckForEnemies()
+    {
+
+        Vector3 pos = transform.position;
+        pos.y += 100;
+
+        Vector3 fwd = transform.forward;
+        Vector3 right = transform.right;
+
+        float dh = (enemeyCheckH * 2) / enemyChecknH;
+
+        EnemyScript possibleEnemy = null;
+
+        for (int i = 0; i <= enemyChecknH; i++)
+        {
+            float thisH = -enemeyCheckH + i * dh;
+
+            Vector3 vec = Vector3.Normalize(fwd + right * thisH) * enemyCheckDistance;
+            Vector3 origin = pos;
+
+            Debug.DrawRay(origin, vec, Color.magenta);
+
+
+            RaycastHit hit;
+            if (Physics.Raycast(origin, vec, out hit, enemyCheckDistance, ignorePlayerMask))
+            {
+                if (hit.collider != null)
+                {
+
+                    if (hit.collider.tag == "Enemy")
+                    {
+                        possibleEnemy = hit.collider.gameObject.GetComponent<EnemyScript>();
+                    }
+                 
+                }
+            }
+
+        }
+
+        if (possibleEnemy!=null) OfferKill(possibleEnemy);
+        else RevokeKillOffer();
+    }
+
+    EnemyScript enemyTarget;
+
+    private void OfferKill(EnemyScript enemyScript)
+    {
+        enemyTarget = enemyScript;
+        enemyScript.OnTargeted();
+    }
+
+    private void RevokeKillOffer()
+    {
+        if(enemyTarget != null) enemyTarget.CancelTargeting();
+        enemyTarget = null;
+    }
+
 
     private void ToggleCrouching()
     {
@@ -149,6 +274,26 @@ public class PlayerController : MonoBehaviour
 
         controller.height = collider.height;
         controller.center = collider.center;
+    }
+
+
+    public float vaultMoveSpeed = 50;
+    private void Vault()
+    {
+        Debug.DrawRay(savedVaultPos.Value, Vector3.up * 1000, Color.magenta);
+
+        if (Vector3.Distance(savedVaultPos.Value, transform.position) > 10)
+        {
+            print("MOVE ACROSS");
+            controller.Move((savedVaultPos.Value - transform.position) * vaultMoveSpeed);
+            Debug.DrawRay(transform.position, (savedVaultPos.Value - transform.position) * vaultMoveSpeed);
+            Debug.Log(Vector3.Distance(savedVaultPos.Value, transform.position));
+        }
+        else
+        {
+            vaultWarmup = VAULT_WARMUP_TIME;
+            vaulting = false;
+        }
     }
 
     private void Move()
