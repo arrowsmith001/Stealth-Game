@@ -1194,6 +1194,7 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
+  m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -1910,6 +1911,7 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
+  m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -2247,7 +2249,7 @@ PrefabInstance:
     - target: {fileID: -4216859302048453862, guid: 47fdfa6b0445f490298f3e05cc09fa18,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: -4098
+      value: -4310
       objectReference: {fileID: 0}
     - target: {fileID: -4216859302048453862, guid: 47fdfa6b0445f490298f3e05cc09fa18,
         type: 3}
