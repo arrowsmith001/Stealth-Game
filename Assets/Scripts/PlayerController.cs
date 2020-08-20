@@ -284,7 +284,7 @@ public class PlayerController : MonoBehaviour
 
         if (Vector3.Distance(savedVaultPos.Value, transform.position) > 10)
         {
-            print("MOVE ACROSS");
+           // print("MOVE ACROSS");
             controller.Move((savedVaultPos.Value - transform.position) * vaultMoveSpeed);
             Debug.DrawRay(transform.position, (savedVaultPos.Value - transform.position) * vaultMoveSpeed);
             Debug.Log(Vector3.Distance(savedVaultPos.Value, transform.position));
