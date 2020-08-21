@@ -14,7 +14,6 @@ using Vector3 = UnityEngine.Vector3;
 
 public class PlayerController : MonoBehaviour
 {
-
     public float MOVESPEED_WALK = 2;
     public float MOVESPEED_RUN = 4;
     public float MOVESPEED_SPRINT = 6;
@@ -198,7 +197,7 @@ public class PlayerController : MonoBehaviour
     {
 
         Vector3 pos = transform.position;
-        pos.y += 100;
+        pos.y += 2;
 
         Vector3 fwd = transform.forward;
         Vector3 right = transform.right;
@@ -252,6 +251,11 @@ public class PlayerController : MonoBehaviour
     }
 
 
+    public const float STANDING_COLLIDER_HEIGHT = 4.5f;
+    public const float STANDING_COLLIDER_CENTER = 2.25f;
+    public const float CROUCHING_COLLIDER_HEIGHT = 2.25f;
+    public const float CROUCHING_COLLIDER_CENTER = 1.12f;
+
     private void ToggleCrouching()
     {
         RaycastHit upHit;
@@ -260,7 +264,7 @@ public class PlayerController : MonoBehaviour
         {
             //print((upHit.collider.tag == "Wall") + " " + upHit.distance + " " + isCrouching);
 
-            if (upHit.distance < 120 && isCrouching)
+            if (upHit.distance < STANDING_COLLIDER_HEIGHT && isCrouching)
             {
                 //print("STOPPED upHit: " + upHit.distance);
                 return;
@@ -269,8 +273,10 @@ public class PlayerController : MonoBehaviour
 
         isCrouching = !isCrouching;
 
-        collider.height = isCrouching ? 100 : 200;
-        collider.center = new Vector3(collider.center.x, isCrouching ? 50 : 100, collider.center.z);
+
+        collider.height = isCrouching ? CROUCHING_COLLIDER_HEIGHT : STANDING_COLLIDER_HEIGHT;
+        collider.center =
+            new Vector3(collider.center.x, isCrouching ? CROUCHING_COLLIDER_CENTER : STANDING_COLLIDER_CENTER, collider.center.z);
 
         controller.height = collider.height;
         controller.center = collider.center;
@@ -320,10 +326,10 @@ public class PlayerController : MonoBehaviour
             if (direction != Vector3.zero)
             {
                 // Our right movement is based on the right vector, movement speed, and our GetAxis command.
-                Vector3 rightMovement = right * moveSpeed * Input.GetAxis("Horizontal");
+                Vector3 rightMovement = Vector3.Normalize(right * Input.GetAxis("Horizontal"))*moveSpeed*Time.deltaTime;
 
                 // Up movement uses the forward vector, movement speed, and the vertical axis inputs.
-                Vector3 upMovement = forward * moveSpeed * Input.GetAxis("Vertical");
+                Vector3 upMovement = Vector3.Normalize(forward * Input.GetAxis("Vertical")) * moveSpeed * Time.deltaTime;
 
 
                 // Detect walls

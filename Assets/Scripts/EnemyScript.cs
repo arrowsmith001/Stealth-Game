@@ -127,7 +127,7 @@ public class EnemyScript : MonoBehaviour
             Vector3 navVec = nextNavPoint.transform.position - transform.position;
 
             navVec = Vector3.Normalize(navVec);
-            controller.Move(navVec * MOVESPEED_WALK);
+            controller.Move(navVec * MOVESPEED_WALK * Time.deltaTime);
 
             Vector3 heading = Vector3.Normalize(controller.velocity);
             if (heading != Vector3.zero)

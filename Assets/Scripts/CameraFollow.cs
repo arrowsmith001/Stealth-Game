@@ -9,6 +9,7 @@ public class CameraFollow : MonoBehaviour
     public float rotSpeed = 5f;
 
     public Vector3 offset;
+    public float offsetFactor = 2;
     float currentYRotation = 45;
 
     private void Update()
@@ -30,28 +31,28 @@ public class CameraFollow : MonoBehaviour
             switch (currentYRotation % 360)
             {
                 case 45:
-                    offset.x = -200; offset.z = -200;
+                    offset.x = -offsetFactor; offset.z = -offsetFactor;
                     break;
                 case -315:
-                    offset.x = -200; offset.z = -200;
+                    offset.x = -offsetFactor; offset.z = -offsetFactor;
                     break;
                 case 135:
-                    offset.x = -200; offset.z = 200;
+                    offset.x = -offsetFactor; offset.z = offsetFactor;
                     break;
                 case -225:
-                    offset.x = -200; offset.z = 200;
+                    offset.x = -offsetFactor; offset.z = offsetFactor;
                     break;
                 case 225:
-                    offset.x = 200; offset.z = 200;
+                    offset.x = offsetFactor; offset.z = offsetFactor;
                     break;
                 case -135:
-                    offset.x = 200; offset.z = 200;
+                    offset.x = offsetFactor; offset.z = offsetFactor;
                     break;
                 case 315:
-                    offset.x = 200; offset.z = -200;
+                    offset.x = offsetFactor; offset.z = -offsetFactor;
                     break;
                 case -45:
-                    offset.x = 200; offset.z = -200;
+                    offset.x = 2; offset.z = -2;
                     break;
             }
 
