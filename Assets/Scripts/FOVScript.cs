@@ -63,7 +63,7 @@ public class FOVScript : MonoBehaviour
                 {
                     if (hit.collider != null)
                     {
-                        if (hit.collider.tag == "Wall") Debug.DrawLine(origin, hit.point, Color.gray);
+                        if (hit.collider.tag == "Wall" || hit.collider.tag == "IndoorWall") Debug.DrawLine(origin, hit.point, Color.gray);
                         else if (hit.collider.tag == "Player")
                         {
                             EventsScript.instance.alertEvent.Invoke();

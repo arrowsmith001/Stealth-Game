@@ -8,6 +8,9 @@ TagManager:
   - NavPoint
   - Fence
   - Enemy
+  - IndoorFloor
+  - IndoorCeiling
+  - IndoorWall
   layers:
   - Default
   - TransparentFX

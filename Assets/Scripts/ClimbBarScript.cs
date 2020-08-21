@@ -18,7 +18,7 @@ public class ClimbBarScript : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-      //  Debug.Log("PLAYER COLLISION");
+       Debug.Log("PLAYER COLLISION");
 
         this.collider = other;
         triggerEntered = true;
@@ -27,13 +27,15 @@ public class ClimbBarScript : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-       // Debug.Log("PLAYER COLLISION ENDED");
+        Debug.Log("PLAYER COLLISION ENDED");
 
         triggerEntered = false;
 
         other.gameObject.GetComponent<PlayerController>().RevokeVaultPos();
 
     }
+
+    public float VAULT_FORWARD_FACTOR = 4;
 
     // Update is called once per frame
     void Update()
@@ -53,7 +55,7 @@ public class ClimbBarScript : MonoBehaviour
 
             Debug.DrawRay(playerPos, vec);
 
-            collider.gameObject.GetComponent<PlayerController>().OfferVaultPos(playerPos + 2*vec);
+            collider.gameObject.GetComponent<PlayerController>().OfferVaultPos(playerPos + VAULT_FORWARD_FACTOR*vec);
         }
 
     }

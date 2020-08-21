@@ -21,6 +21,7 @@ public class EnemyScript : MonoBehaviour
     public float MOVESPEED_WALK = 4;
     public float MOVESPEED_RUN = 8;
 
+    public Vector3 headTowards;
 
     Animator anim;
     new Rigidbody rigidbody;
@@ -119,46 +120,59 @@ public class EnemyScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if(navPoints.Count > 0 && !isActingOnNavData)
+        if(!knockedOut)
         {
-            float rotSpeed = 8;
-
-            GameObject nextNavPoint = navPoints[navPointIndex];
-            Vector3 navVec = nextNavPoint.transform.position - transform.position;
-
-            navVec = Vector3.Normalize(navVec);
-            controller.Move(navVec * MOVESPEED_WALK * Time.deltaTime);
-
-            Vector3 heading = Vector3.Normalize(controller.velocity);
-            if (heading != Vector3.zero)
+            if (navPoints.Count > 0 && !isActingOnNavData)
             {
-                Quaternion newRot = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(heading), Time.deltaTime * rotSpeed);
+                float rotSpeed = 8;
+
+                GameObject nextNavPoint = navPoints[navPointIndex];
+                Vector3 navVec = nextNavPoint.transform.position - transform.position;
+
+                navVec = Vector3.Normalize(navVec);
+                navVec = navVec * MOVESPEED_WALK * Time.deltaTime;
+
+                controller.Move(navVec);
+
+                Vector3 heading = Vector3.Normalize(controller.velocity);
+                if (heading != Vector3.zero)
+                {
+                    Quaternion newRot = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(heading), Time.deltaTime * rotSpeed);
+                    newRot.x = 0;
+                    newRot.z = 0;
+                    transform.rotation = newRot;
+                }
+            }
+
+
+
+            if (isActingOnNavData)
+            {
+                float rotSpeed = 5;
+
+                Quaternion newRot = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, currentNavPoint.angle, 0), Time.deltaTime * rotSpeed);
                 newRot.x = 0;
                 newRot.z = 0;
+
+                if (UtilsClass.Approximately(transform.rotation, newRot, 0.0005f)) { Animate(anim, BOOL_IDLE); }
+                else
+                {
+                    Animate(anim, BOOL_WALK);
+                }
+
                 transform.rotation = newRot;
             }
         }
+            
+        
 
 
+    }
 
-        if(isActingOnNavData)
-        {
-            float rotSpeed = 5;
-
-            Quaternion newRot = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, currentNavPoint.angle, 0), Time.deltaTime * rotSpeed);
-            newRot.x = 0;
-            newRot.z = 0;
-
-            if (UtilsClass.Approximately(transform.rotation, newRot, 0.0005f)) { Animate(anim, BOOL_IDLE); }
-            else {
-                Animate(anim, BOOL_WALK);
-            }
-
-            transform.rotation = newRot;
-        }
-
-
-
+    bool knockedOut = false;
+    public void KnockOut()
+    {
+        knockedOut = true;
     }
 
     public void OnTargeted()

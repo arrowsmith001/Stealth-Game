@@ -130,21 +130,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
 
-        RaycastHit upHit;
-
-        if (Physics.Raycast(transform.position, transform.up, out upHit, Mathf.Infinity, ignorePlayerMask))
-        {
-            Debug.DrawLine(transform.position, upHit.point, Color.white);
-        }
-        RaycastHit fwdHit;
-        if (Physics.Raycast(transform.position, transform.up, out fwdHit, Mathf.Infinity, ignorePlayerMask))
-        {
-            Debug.DrawLine(transform.position, fwdHit.point, Color.red);
-        }
-
         CheckForEnemies();
-
-     
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -158,19 +144,17 @@ public class PlayerController : MonoBehaviour
 
         if(Input.GetKeyDown(KeyCode.LeftShift))
         {
-            // Attack!
-            if(enemyTarget != null)
+            if(givenVaultPos != null)
             {
-                print("Killed");
-
-            } // Then resolve vaulting
-            else if(givenVaultPos != null)
+                print("Vault opp detected");
+                savedVaultPos = givenVaultPos;
+                vaulting = true;
+            }else if(enemyTarget != null)
             {
-
-            savedVaultPos = givenVaultPos;
-            vaulting = true;
+                enemyTarget.KnockOut();
             }
         }
+
 
         if(vaulting)
         {
@@ -182,11 +166,22 @@ public class PlayerController : MonoBehaviour
             
         }
 
-
         if (!vaulting)
         {
             Move();
         }
+
+        RaycastHit floorHit;
+        Vector3 pos = transform.position;
+        pos.y += 0.1f;
+        if (Physics.Raycast(pos, transform.TransformDirection(-transform.up), out floorHit, Mathf.Infinity, ignorePlayerMask))
+        {
+            if(floorHit.collider.tag == "IndoorFloor")
+            {
+                floorHit.collider.transform.parent.GetComponent<IndoorFloorScript>().HideCeilingAndWalls();
+            }
+        };
+
     }
 
     public float enemyCheckDistance = 10000;
@@ -254,7 +249,7 @@ public class PlayerController : MonoBehaviour
     public const float STANDING_COLLIDER_HEIGHT = 4.5f;
     public const float STANDING_COLLIDER_CENTER = 2.25f;
     public const float CROUCHING_COLLIDER_HEIGHT = 2.25f;
-    public const float CROUCHING_COLLIDER_CENTER = 1.12f;
+    public const float CROUCHING_COLLIDER_CENTER = 1.1f;
 
     private void ToggleCrouching()
     {
@@ -282,17 +277,17 @@ public class PlayerController : MonoBehaviour
         controller.center = collider.center;
     }
 
+    public float vaultMoveSpeed = 3;
 
-    public float vaultMoveSpeed = 50;
     private void Vault()
     {
-        Debug.DrawRay(savedVaultPos.Value, Vector3.up * 1000, Color.magenta);
+        Debug.DrawRay(savedVaultPos.Value, Vector3.up * 1, Color.magenta);
 
-        if (Vector3.Distance(savedVaultPos.Value, transform.position) > 10)
+        if (Vector3.Distance(savedVaultPos.Value, transform.position) > 5)
         {
            // print("MOVE ACROSS");
-            controller.Move((savedVaultPos.Value - transform.position) * vaultMoveSpeed);
-            Debug.DrawRay(transform.position, (savedVaultPos.Value - transform.position) * vaultMoveSpeed);
+            controller.Move((savedVaultPos.Value - transform.position) * vaultMoveSpeed* Time.deltaTime);
+            Debug.DrawRay(transform.position, (savedVaultPos.Value - transform.position) * vaultMoveSpeed* Time.deltaTime);
             Debug.Log(Vector3.Distance(savedVaultPos.Value, transform.position));
         }
         else
