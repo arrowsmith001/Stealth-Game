@@ -173,7 +173,7 @@ public class PlayerController : MonoBehaviour
 
         RaycastHit floorHit;
         Vector3 pos = transform.position;
-        pos.y += 0.1f;
+        pos.y += 0.5f;
         if (Physics.Raycast(pos, transform.TransformDirection(-transform.up), out floorHit, Mathf.Infinity, ignorePlayerMask))
         {
             if(floorHit.collider.tag == "IndoorFloor")

@@ -40,7 +40,12 @@ public class IndoorFloorScript : MonoBehaviour
                 case "IndoorWall":
                     {
 
-                        go.GetComponent<MeshRenderer>().material = active ? Global.instance.wall : Global.instance.wallSemitrans;
+                        int wallCount = go.transform.childCount;
+                        for(int j = 0; j < wallCount; j++)
+                        {
+                            go.transform.GetChild(j).GetComponent<MeshRenderer>().material
+                                = active ? Global.instance.wall : Global.instance.wallSemitrans;
+                        }
                     }
                     break;
             }
