@@ -49,15 +49,18 @@ public class EnemyScript : MonoBehaviour
 
     private void OnTriggerEnter(Collider collider)
     {
+        //print("TRIGGER ENTERED");
+
         if (collider.tag == "NavPoint")
         {
             NavPointData navData = collider.gameObject.GetComponent<NavPointScript>().GetNavData();
 
+            //if(navPoints[navPointIndex] != collider.gameObject) return;
+
             if(navData.angles.Length == 0 && navData.times.Length == 0
                 || navData.angles.Length != navData.times.Length)
             {
-                navPointIndex++;
-                if (navPointIndex == navPoints.Count) navPointIndex = 0;
+                navPointIndex = (navPointIndex + 1) % navPoints.Count;
             }
             else
             {
@@ -71,9 +74,11 @@ public class EnemyScript : MonoBehaviour
         billBoard.OnAlert();
     }
 
-    bool isActingOnNavData = false;
+    public bool isActingOnNavData = false;
     private IEnumerator ActOnNavData(NavPointData navData)
     {
+        //print("ActOnNavData CALLED");
+
         isActingOnNavData = true;
         Animate(anim, BOOL_IDLE);
 
@@ -86,14 +91,14 @@ public class EnemyScript : MonoBehaviour
             yield return new WaitForSeconds(navData.times[i]);
         }
 
-        navPointIndex++;
-        if (navPointIndex == navPoints.Count) navPointIndex = 0;
+        //print("navpointbefore: "+navPointIndex);
+        navPointIndex = (navPointIndex + 1) % navPoints.Count;
+        //print("navpointafter: "+navPointIndex);
 
         isActingOnNavData = false;
         Animate(anim, BOOL_WALK);
 
-        if(navPoints.Count == 1)
-        {
+        if(navPoints.Count == 1){ 
             StartCoroutine(ActOnNavData(navData));
         }
     }
