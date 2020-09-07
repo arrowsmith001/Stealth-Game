@@ -6,7 +6,7 @@ using UnityEngine;
 
 public class EnemyScript : MonoBehaviour
 {
-
+    public float height = 4;
     public List<GameObject> navPoints;
     public int navPointIndex;
 
@@ -188,5 +188,10 @@ public class EnemyScript : MonoBehaviour
     public void CancelTargeting()
     {
         billBoard.CancelTargeting();
+    }
+
+    public void SetCollision(bool enabled){
+        this.GetComponent<CapsuleCollider>().enabled = enabled;
+        this.GetComponent<CharacterController>().enabled = enabled;
     }
 }

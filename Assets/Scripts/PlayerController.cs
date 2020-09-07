@@ -14,6 +14,9 @@ using Vector3 = UnityEngine.Vector3;
 
 public class PlayerController : MonoBehaviour
 {
+    public bool displayCasts = false;
+
+    public float MOVESPEED_DRAGGING = 1;
     public float MOVESPEED_WALK = 2;
     public float MOVESPEED_RUN = 4;
     public float MOVESPEED_SPRINT = 6;
@@ -142,6 +145,8 @@ public class PlayerController : MonoBehaviour
             ToggleCrouching();
         }
 
+
+       
         if(Input.GetKeyDown(KeyCode.LeftShift))
         {
             if(givenVaultPos != null)
@@ -149,10 +154,39 @@ public class PlayerController : MonoBehaviour
                 print("Vault opp detected");
                 savedVaultPos = givenVaultPos;
                 vaulting = true;
-            }else if(enemyTarget != null)
+            } //Instant takedown variant
+            // else if(enemyTarget != null)
+            // {
+            //     enemyTarget.KnockOut();
+            // }
+        }
+        
+     
+        if(Input.GetKey(KeyCode.LeftShift))
+        {
+            if(enemyTargetHolding == null || enemyTarget != null)
             {
-                enemyTarget.KnockOut();
+                print("Setting holding target...");
+                enemyTargetHolding = enemyTarget;
+            }else if(enemyTargetHolding != null){
+                print("MOVE");
+                enemyTargetHolding.SetCollision(false);
+
+                // Calculate position/rotation to stick to
+                Vector3 playerForward = transform.forward;
+                Vector3 justInFront = transform.position + playerForward * 1;
+                if(displayCasts) Debug.DrawLine(transform.position, justInFront);
+
+                enemyTargetHolding.transform.position = justInFront;
+               enemyTargetHolding.transform.rotation = transform.rotation;
+               // enemyTargetHolding.transform.rotation = Quaternion.LookRotation(justInFront + 5*playerForward);
+      
             }
+
+        }
+        if(Input.GetKeyUp(KeyCode.LeftShift) && enemyTargetHolding != null){
+            enemyTargetHolding.SetCollision(true);
+            enemyTargetHolding = null;
         }
 
 
@@ -168,7 +202,7 @@ public class PlayerController : MonoBehaviour
 
         if (!vaulting)
         {
-            Move();
+            Move(enemyTargetHolding != null);
         }
 
         RaycastHit floorHit;
@@ -208,7 +242,7 @@ public class PlayerController : MonoBehaviour
             Vector3 vec = Vector3.Normalize(fwd + right * thisH) * enemyCheckDistance;
             Vector3 origin = pos;
 
-            Debug.DrawRay(origin, vec, Color.magenta);
+            if(displayCasts) Debug.DrawRay(origin, vec, Color.magenta);
 
 
             RaycastHit hit;
@@ -232,6 +266,7 @@ public class PlayerController : MonoBehaviour
     }
 
     EnemyScript enemyTarget;
+    EnemyScript enemyTargetHolding;
 
     private void OfferKill(EnemyScript enemyScript)
     {
@@ -281,13 +316,13 @@ public class PlayerController : MonoBehaviour
 
     private void Vault()
     {
-        Debug.DrawRay(savedVaultPos.Value, Vector3.up * 1, Color.magenta);
+        if(displayCasts) Debug.DrawRay(savedVaultPos.Value, Vector3.up * 1, Color.magenta);
 
         if (Vector3.Distance(savedVaultPos.Value, transform.position) > 5)
         {
            // print("MOVE ACROSS");
             controller.Move((savedVaultPos.Value - transform.position) * vaultMoveSpeed* Time.deltaTime);
-            Debug.DrawRay(transform.position, (savedVaultPos.Value - transform.position) * vaultMoveSpeed* Time.deltaTime);
+            if(displayCasts) Debug.DrawRay(transform.position, (savedVaultPos.Value - transform.position) * vaultMoveSpeed* Time.deltaTime);
             Debug.Log(Vector3.Distance(savedVaultPos.Value, transform.position));
         }
         else
@@ -297,11 +332,11 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void Move()
+    private void Move(bool isHoldingEnemy)
     {
         // Establishes rotation speed and movespeed
         float rotSpeed = 8;
-        float moveSpeed = isCrouching ? MOVESPEED_WALK : Input.GetKey(KeyCode.LeftShift) ? MOVESPEED_SPRINT : MOVESPEED_RUN;
+        float moveSpeed = isCrouching ? MOVESPEED_WALK : Input.GetKey(KeyCode.LeftShift) ? !isHoldingEnemy ? MOVESPEED_SPRINT : MOVESPEED_DRAGGING : MOVESPEED_RUN;
         float velocity = 0;
 
         // Calculates forward and right vectors relative to camera
@@ -337,7 +372,8 @@ public class PlayerController : MonoBehaviour
                 velocity = Vector3.Magnitude(controller.velocity);
 
 
-                Vector3 heading = Vector3.Normalize(controller.velocity);
+                Vector3 heading = Vector3
+                    .Normalize(isHoldingEnemy ? -controller.velocity : controller.velocity);
 
                 if (heading != Vector3.zero)
                 {
