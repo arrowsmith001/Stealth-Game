@@ -20,6 +20,9 @@ public class PlayerController : MonoBehaviour
     public float MOVESPEED_WALK = 2;
     public float MOVESPEED_RUN = 4;
     public float MOVESPEED_SPRINT = 6;
+    public float ANIM_TOL_WALK = 2;
+    public float ANIM_TOL_RUN = 3;
+    public float ANIM_TOL_SPRINT = 4;
 
     private bool isCrouching = false;
 
@@ -33,6 +36,8 @@ public class PlayerController : MonoBehaviour
     private const String BOOL_WALK = "walk";
     private const String BOOL_RUN = "run";
     private const String BOOL_SPRINT = "sprint";
+    private const String BOOL_CROUCHWALK = "crouchwalk";
+    private const String BOOL_CROUCH = "crouch";
 
 
     void Awake()
@@ -44,18 +49,29 @@ public class PlayerController : MonoBehaviour
 
         rigidbody.freezeRotation = true;
 
-        vaultWarmup = VAULT_WARMUP_TIME;
+        climbWarmup = CLIMB_WARMUP_TIME;
     }
 
-    Vector3? givenVaultPos = null;
-    public void OfferVaultPos(Vector3 vector3)
+    List<Vector3> givenClimbPath = null;
+    List<Vector3> givenVaultPath = null;
+    public void OfferClimbPath(List<Vector3> path)
     {
-        this.givenVaultPos = vector3;
+        this.givenClimbPath = path;
     }
 
-    public void RevokeVaultPos()
+    public void RevokeClimbPath()
     {
-        this.givenVaultPos = null;
+        this.givenClimbPath = null;
+    }
+
+    public void RevokeVaultPath()
+    {
+        this.givenVaultPath = null;
+    }
+
+    public void OfferVaultPath(List<Vector3> path)
+    {
+        this.givenVaultPath = path;
     }
 
 
@@ -121,11 +137,13 @@ public class PlayerController : MonoBehaviour
     Vector3 forward;
     Vector3 right;
 
-    Vector3? savedVaultPos;
+    List<Vector3> savedClimbPath;
+    List<Vector3> savedVaultPath;
+    bool climbing = false;
     bool vaulting = false;
 
-    public float VAULT_WARMUP_TIME = 0.5f;
-    float vaultWarmup;
+    public float CLIMB_WARMUP_TIME = 0.5f;
+    float climbWarmup;
 
     int ignorePlayerMask = ~(1 << 8);
 
@@ -149,11 +167,15 @@ public class PlayerController : MonoBehaviour
        
         if(Input.GetKeyDown(KeyCode.LeftShift))
         {
-            if(givenVaultPos != null)
+            if(givenClimbPath != null)
             {
-                print("Vault opp detected");
-                savedVaultPos = givenVaultPos;
-                vaulting = true;
+                savedClimbPath = givenClimbPath;
+                StartCoroutine(Climb());
+            }
+            else if(givenVaultPath != null)
+            {
+                savedVaultPath = givenVaultPath;
+                StartCoroutine(Vault());
             } //Instant takedown variant
             // else if(enemyTarget != null)
             // {
@@ -166,10 +188,10 @@ public class PlayerController : MonoBehaviour
         {
             if(enemyTargetHolding == null || enemyTarget != null)
             {
-                print("Setting holding target...");
+                //print("Setting holding target...");
                 enemyTargetHolding = enemyTarget;
             }else if(enemyTargetHolding != null){
-                print("MOVE");
+               // print("MOVE");
                 enemyTargetHolding.SetCollision(false);
 
                 // Calculate position/rotation to stick to
@@ -190,17 +212,7 @@ public class PlayerController : MonoBehaviour
         }
 
 
-        if(vaulting)
-        {
-            if (vaultWarmup > 0) vaultWarmup -= Time.deltaTime;
-            else
-            {
-                Vault();
-            }
-            
-        }
-
-        if (!vaulting)
+        if (!climbing && !vaulting)
         {
             Move(enemyTargetHolding != null);
         }
@@ -292,11 +304,11 @@ public class PlayerController : MonoBehaviour
 
         if (Physics.Raycast(transform.position, transform.up, out upHit, Mathf.Infinity, ~(1 << 8)))
         {
-            //print((upHit.collider.tag == "Wall") + " " + upHit.distance + " " + isCrouching);
+            print((upHit.collider.tag == "Wall") + " " + upHit.distance + " " + isCrouching);
 
             if (upHit.distance < STANDING_COLLIDER_HEIGHT && isCrouching)
             {
-                //print("STOPPED upHit: " + upHit.distance);
+                print("STOPPED upHit: " + upHit.distance);
                 return;
             }
         }
@@ -312,24 +324,64 @@ public class PlayerController : MonoBehaviour
         controller.center = collider.center;
     }
 
-    public float vaultMoveSpeed = 3;
+    public float climbMoveSpeed = 3;
 
-    private void Vault()
+    private IEnumerator Climb()
     {
-        if(displayCasts) Debug.DrawRay(savedVaultPos.Value, Vector3.up * 1, Color.magenta);
+        climbing = true;
+        controller.enabled = false;
+        Animate(anim, BOOL_IDLE);
+    
+        Vector3 target1 = savedClimbPath[0];
+        Vector3 target2 = savedClimbPath[1];
+        Vector3 target3 = savedClimbPath[2];
 
-        if (Vector3.Distance(savedVaultPos.Value, transform.position) > 5)
+        Quaternion q = Quaternion.LookRotation(target3 - transform.position);
+        q.x = 0;
+        q.z = 0;
+        transform.rotation = q;
+
+        foreach(Vector3 target in savedClimbPath)
         {
-           // print("MOVE ACROSS");
-            controller.Move((savedVaultPos.Value - transform.position) * vaultMoveSpeed* Time.deltaTime);
-            if(displayCasts) Debug.DrawRay(transform.position, (savedVaultPos.Value - transform.position) * vaultMoveSpeed* Time.deltaTime);
-            Debug.Log(Vector3.Distance(savedVaultPos.Value, transform.position));
+            while(Vector3.Distance(transform.position, target) > 0.05)
+            {
+                transform.position += (target - transform.position) * climbMoveSpeed * Time.deltaTime;
+                yield return new WaitForEndOfFrame();
+            }
         }
-        else
+
+        climbing = false;
+        controller.enabled = true;
+    }
+
+    private IEnumerator Vault()
+    {
+        vaulting = true;
+        controller.enabled = false;
+        Animate(anim, BOOL_IDLE);
+
+        float startY = transform.position.y;
+
+       foreach(Vector3 target in savedVaultPath)
         {
-            vaultWarmup = VAULT_WARMUP_TIME;
-            vaulting = false;
+            while(Vector3.Distance(transform.position, target) > 0.05)
+            {
+                transform.position += (target - transform.position) * climbMoveSpeed * Time.deltaTime;
+                yield return new WaitForEndOfFrame();
+            }
         }
+
+        Vector3 finalTarget = transform.position;
+        finalTarget.y = startY;
+
+        while(Vector3.Distance(transform.position, finalTarget) > 0.05)
+            {
+                transform.position += (finalTarget - transform.position) * climbMoveSpeed * Time.deltaTime;
+                yield return new WaitForEndOfFrame();
+            }
+
+        vaulting = false;
+        controller.enabled = true;
     }
 
     private void Move(bool isHoldingEnemy)
@@ -394,10 +446,14 @@ public class PlayerController : MonoBehaviour
             }
 
 
-            if (velocity <= 0.5) Animate(anim, BOOL_IDLE);
-        else if (moveSpeed == MOVESPEED_WALK) Animate(anim, BOOL_WALK);
-        else if (moveSpeed == MOVESPEED_RUN) Animate(anim, BOOL_RUN);
-        else if (moveSpeed == MOVESPEED_SPRINT) Animate(anim, BOOL_SPRINT);
+        if (velocity < 0.1){
+            if(isCrouching) Animate(anim, BOOL_CROUCH);
+            else Animate(anim, BOOL_IDLE);
+        } 
+        else if(isCrouching) Animate(anim, BOOL_CROUCHWALK);
+        else if (velocity < ANIM_TOL_RUN) Animate(anim, BOOL_WALK);
+        else if (velocity < ANIM_TOL_SPRINT) Animate(anim, BOOL_RUN);
+        else Animate(anim, BOOL_SPRINT);
 
         //print(velocity);
 

@@ -17,39 +17,59 @@ public class FOVScript : MonoBehaviour
     [Tooltip("Toggle to show/hide raycasts.")]
     public bool displayCasts = true;
 
-    int? mask;
-
-    void Awake()
-    {
-        // Layer mask to be used when ray casting i.e. FOV field will ONLY detect on this layer. If null, mask defaults to the default layer.
-        // mask = null;
-        mask = 1 << 10 | 1 << 8;
-    }
-
     [Tooltip("Raw distance of the visual field.")]
-    public float distance = 1000;
+    public float distance = 20;
     
-    [Tooltip("The density of the FOV mesh. The higher n is, the more detailed the FOV, but at higher performance cost.")]
-    public int n = 5;
-
+    [Tooltip("The density of the FOV mesh. The higher n is, the more detailed the FOV, but at higher performance cost. If you're having trouble getting collisions, make n larger.")]
+    public int n = 35;
 
     [Tooltip("Value determining the FOV's maximum horizontal reach. 0 is none, 1 is 90 degrees, etc.")]
-    public float h = 0.6f;
+    public float h = 1f;
 
     [Tooltip("Value determining the FOV's maximum vertical reach. 0 is none, 1 is 90 degrees, etc.")]
-    public float v = 0.6f;
+    public float v = 1.02f;
 
     [Tooltip("Dampening factor for FOV vertical reach i.e. caps how tall the field can get.")]
-    public float maxV = 1;
+    public float maxV = 1.06f;
+
+    [Tooltip("Speed at which FOV rotates in direction specified by SetTargetRotation.")]
+    public float rotSpeed = 3;
 
     [Tooltip("Index 0 is normal material for FOV, index 1 is when triggered by the player entering the FOV.")]
     public Material[] FOVMaterials;
 
+    // To be used by external scripts to set the target rotation of the FOV itself. 
+    // Note: FOV rotates with the attached character anyway, but in case of up/down movement or slight left/right movement, use this.
+    // Don't forget to reset to Vector3.zero!
+    public void SetTargetRotation(Vector3 targetRotation)
+    {
+        this.targetRotation = targetRotation;
+    }
+
+    public Vector3 defaultRotation = new Vector3(15, 0, 0);
+    Vector3 targetRotation;
+
+    private void Awake() {
+        targetRotation = defaultRotation;
+    }
+
+    void RotateFOV(){
+    
+        Quaternion local = Quaternion.Euler(transform.localRotation.eulerAngles);
+        Quaternion target = Quaternion.Euler(targetRotation);
+
+        transform.localRotation = Quaternion.Slerp(local, target, rotSpeed * Time.deltaTime);
+    }
+
     bool playerIsBeingDetected = false; // Used to track if player is currently being detected
+
+    int? mask = 1 << 8 | 1 << 10;
 
     // Update is called once per frame
     void Update()
     {
+        RotateFOV();
+
         Mesh mesh = new Mesh();
         meshObject.GetComponent<MeshFilter>().mesh = mesh;
 
@@ -94,14 +114,18 @@ public class FOVScript : MonoBehaviour
                 float theta = GetAngleBetweenVectorAndPlane(vec, transform.up);
                 float smallD = Mathf.Abs(maxV/Mathf.Sin(theta));
                 float modifier = Mathf.Min(smallD / distance, 1);
-                vec *= modifier; // Apply modifier
+                //print("j " + j + " mod " + modifier);
+
+                vec = vec * modifier; // Apply modifier
+                
+
 
                 RaycastHit hit;
-                if (Physics.Raycast(origin, vec, out hit, distance, mask ?? 1))
+                if (Physics.Raycast(origin, vec, out hit, vec.magnitude, mask ?? 0))
                 {
-                     vec = vec * (hit.distance / distance); // Cuts vector size in proportion to hit distance
+                    vec = vec * (hit.distance / vec.magnitude); // Cuts vector size in proportion to hit distance
 
-                    if(hit.collider.tag == "Player") // Responds to "Player" tag attached to a game object
+                    if(hit.collider.tag == "Player" && hit.distance <= vec.magnitude) // Responds to "Player" tag attached to a game object
                     {
                         playerDetected = true;
                     }
@@ -116,30 +140,30 @@ public class FOVScript : MonoBehaviour
                     // Front cases
                     if(grid.GetDownLeft(vertexIndex) != null)
                     {
-                        triangles[triangleIndex + 2] = vertexIndex;
+                        triangles[triangleIndex + (invertFront ? 2 : 0)] = vertexIndex;
                         triangles[triangleIndex + 1] = (int) grid.GetDown(vertexIndex);
-                        triangles[triangleIndex + 0] = (int) grid.GetDownLeft(vertexIndex); 
+                        triangles[triangleIndex + (invertFront ? 0 : 2)] = (int) grid.GetDownLeft(vertexIndex); 
                         
                         triangleIndex += 3;
                     }
                     
                     if(grid.GetUpRight(vertexIndex) != null)
                     {
-                        triangles[triangleIndex + 2] = vertexIndex;
+                        triangles[triangleIndex + (invertFront ? 2 : 0)] = vertexIndex;
                         triangles[triangleIndex + 1] = (int) grid.GetUp(vertexIndex);
-                        triangles[triangleIndex + 0] = (int) grid.GetUpRight(vertexIndex);   
+                        triangles[triangleIndex + (invertFront ? 0 : 2)] = (int) grid.GetUpRight(vertexIndex);   
 
                         triangleIndex += 3;                      
                     }
 
-                    // Border cases - note, for some reason up/down is actually left/right. You'll have to experiment with commenting out one of the if clauses to determine which is which, if you needed to.
+                    //Border cases - note, for some reason up/down is actually left/right. You'll have to experiment with commenting out one of the if clauses to determine which is which, if you needed to.
                     if(grid.GetLeft(vertexIndex) == null)
                     {
                         if(grid.GetDown(vertexIndex) != null)
                         {
-                            triangles[triangleIndex + 2] = vertexIndex;
+                            triangles[triangleIndex + (invertLeft ? 2 : 0)] = vertexIndex;
                             triangles[triangleIndex + 1] = (int) grid.GetDown(vertexIndex);
-                            triangles[triangleIndex + 0] = 0; 
+                            triangles[triangleIndex + (invertLeft ? 0 : 2)] = 0; 
 
                             triangleIndex += 3;
                         }
@@ -149,9 +173,9 @@ public class FOVScript : MonoBehaviour
                     {
                         if(grid.GetDown(vertexIndex) != null)
                         {
-                            triangles[triangleIndex + 0] = vertexIndex;
+                            triangles[triangleIndex + (invertRight ? 2 : 0)] = vertexIndex;
                             triangles[triangleIndex + 1] = (int) grid.GetDown(vertexIndex);
-                            triangles[triangleIndex + 2] = 0; 
+                            triangles[triangleIndex + (invertRight ? 0 : 2)] = 0; 
 
                             triangleIndex += 3;
                         }
@@ -161,9 +185,9 @@ public class FOVScript : MonoBehaviour
                     {
                         if(grid.GetLeft(vertexIndex) != null)
                         {
-                            triangles[triangleIndex + 2] = vertexIndex;
+                            triangles[triangleIndex + (invertUp ? 2 : 0)] = vertexIndex;
                             triangles[triangleIndex + 1] = (int) grid.GetLeft(vertexIndex);
-                            triangles[triangleIndex + 0] = 0; 
+                            triangles[triangleIndex + (invertUp ? 0 : 2)] = 0; 
 
                             triangleIndex += 3;
                         }
@@ -172,9 +196,9 @@ public class FOVScript : MonoBehaviour
                     {
                         if(grid.GetRight(vertexIndex) != null)
                         {
-                            triangles[triangleIndex + 2] = vertexIndex;
+                            triangles[triangleIndex + (invertDown ? 2 : 0)] = vertexIndex;
                             triangles[triangleIndex + 1] = (int) grid.GetRight(vertexIndex);
-                            triangles[triangleIndex + 0] = 0; 
+                            triangles[triangleIndex + (invertDown ? 0 : 2)] = 0; 
 
                             triangleIndex += 3;
                         }
@@ -185,12 +209,13 @@ public class FOVScript : MonoBehaviour
 
         }    
     
-        mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 2000); // TODO This is vast overestimate
+        //mesh.bounds = new Bounds(Vector3.zero, Vector3.one); // TODO This is vast overestimate
 
         mesh.vertices = vertices;
         mesh.uv = uv;
         mesh.triangles = triangles; 
-
+        
+        // Changes mesh material if player is detected/not detected
         if(playerDetected && !playerIsBeingDetected)
         {
             playerIsBeingDetected = true;
@@ -203,7 +228,14 @@ public class FOVScript : MonoBehaviour
             meshObject.GetComponent<MeshRenderer>().material = FOVMaterials[0]; // Default FOV color
              playerHitEvent.Invoke(false);
         }
+
     }
+
+    public bool invertFront = false;
+    public bool invertLeft = false;
+    public bool invertRight = false;
+    public bool invertUp = false;
+    public bool invertDown = false;
 
     private float GetAngleBetweenVectorAndPlane(Vector3 vec, Vector3 norm)
     {

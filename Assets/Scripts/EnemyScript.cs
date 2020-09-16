@@ -6,9 +6,19 @@ using UnityEngine;
 
 public class EnemyScript : MonoBehaviour
 {
+    public bool displayNavMessages = false;
     public float height = 4;
+    Queue<NavData> navQ = new Queue<NavData>();
     public List<GameObject> navPoints;
-    public int navPointIndex;
+    public int navPointIndex = 0;
+
+    GameObject GetNextNavPoint(){
+        
+        int nextIndex = (navPointIndex + 1) % navPoints.Count;
+        navPointIndex = nextIndex;
+
+        return navPoints[nextIndex];
+    }
 
     public FOVScript fovScript;
     public BillBoard billBoard;
@@ -28,6 +38,7 @@ public class EnemyScript : MonoBehaviour
     new CapsuleCollider collider;
     CharacterController controller;
 
+
     private void Awake()
     {
 
@@ -38,7 +49,17 @@ public class EnemyScript : MonoBehaviour
 
         rigidbody.freezeRotation = true;
 
-        if(navPoints.Count != 0) navPointIndex = 0;
+        if(navPoints.Count != 0) 
+        {
+            navQ.Enqueue(new NavData(new NavCommand(Commands.GO, navPoints[0].transform.position)));
+        }
+    }
+
+    private void QueueNextNavPoint()
+    {
+        NavData nd = navPoints[navPointIndex].GetComponent<NavPointScript>().GetNavData();
+        nd.AddCommand(new NavCommand(Commands.GO, GetNextNavPoint().transform.position));
+        navQ.Enqueue(nd);
     }
 
     // Start is called before the first frame update
@@ -53,19 +74,10 @@ public class EnemyScript : MonoBehaviour
 
         if (collider.tag == "NavPoint")
         {
-            NavPointData navData = collider.gameObject.GetComponent<NavPointScript>().GetNavData();
+            GameObject point = collider.gameObject;
+            navPointIndex = navPoints.IndexOf(point);
 
-            //if(navPoints[navPointIndex] != collider.gameObject) return;
-
-            if(navData.angles.Length == 0 && navData.times.Length == 0
-                || navData.angles.Length != navData.times.Length)
-            {
-                navPointIndex = (navPointIndex + 1) % navPoints.Count;
-            }
-            else
-            {
-                StartCoroutine(ActOnNavData(navData));
-            }
+            QueueNextNavPoint();
         }
     }
 
@@ -74,34 +86,6 @@ public class EnemyScript : MonoBehaviour
         billBoard.OnAlert();
     }
 
-    public bool isActingOnNavData = false;
-    private IEnumerator ActOnNavData(NavPointData navData)
-    {
-        //print("ActOnNavData CALLED");
-
-        isActingOnNavData = true;
-        Animate(anim, BOOL_IDLE);
-
-        // Initialise direction
-        //transform.rotation = navData.direction;
-
-        for (int i = 0; i < navData.angles.Length; i++)
-        {
-            currentNavPoint = navData.GetNavPoint(i);
-            yield return new WaitForSeconds(navData.times[i]);
-        }
-
-        //print("navpointbefore: "+navPointIndex);
-        navPointIndex = (navPointIndex + 1) % navPoints.Count;
-        //print("navpointafter: "+navPointIndex);
-
-        isActingOnNavData = false;
-        Animate(anim, BOOL_WALK);
-
-        if(navPoints.Count == 1){ 
-            StartCoroutine(ActOnNavData(navData));
-        }
-    }
 
     void Animate(Animator anim, String animation)
     {
@@ -120,58 +104,157 @@ public class EnemyScript : MonoBehaviour
         }
     }
 
-    NavPointSingle currentNavPoint;
+    NavCommand currentNavPoint;
+    int g;
+
+    Vector3? targetPosition = null;
+    Vector3? targetRotation = null;
 
     // Update is called once per frame
     void Update()
     {
-        if(!knockedOut)
+        ActOnQueue();
+
+        MoveToTarget();
+        RotateToTarget();
+
+    }
+
+    private void RotateToTarget()
+    {
+        if(targetRotation == null) return;
+
+        float rotSpeed = 5;
+
+        Quaternion newRot = Quaternion.Slerp(transform.rotation, Quaternion.Euler((Vector3) targetRotation), Time.deltaTime * rotSpeed);
+
+        if (UtilsClass.Approximately(transform.rotation, newRot, 0.0005f)) { 
+            Animate(anim, BOOL_IDLE);
+            }
+        else
         {
-            if (navPoints.Count > 0 && !isActingOnNavData)
-            {
-                float rotSpeed = 8;
-
-                GameObject nextNavPoint = navPoints[navPointIndex];
-                Vector3 navVec = nextNavPoint.transform.position - transform.position;
-
-                navVec = Vector3.Normalize(navVec);
-                navVec = navVec * MOVESPEED_WALK * Time.deltaTime;
-
-                controller.Move(navVec);
-
-                Vector3 heading = Vector3.Normalize(controller.velocity);
-                if (heading != Vector3.zero)
-                {
-                    Quaternion newRot = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(heading), Time.deltaTime * rotSpeed);
-                    newRot.x = 0;
-                    newRot.z = 0;
-                    transform.rotation = newRot;
-                }
-            }
-
-
-
-            if (isActingOnNavData)
-            {
-                float rotSpeed = 5;
-
-                Quaternion newRot = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, currentNavPoint.angle, 0), Time.deltaTime * rotSpeed);
-                newRot.x = 0;
-                newRot.z = 0;
-
-                if (UtilsClass.Approximately(transform.rotation, newRot, 0.0005f)) { Animate(anim, BOOL_IDLE); }
-                else
-                {
-                    Animate(anim, BOOL_WALK);
-                }
-
-                transform.rotation = newRot;
-            }
+            Animate(anim, BOOL_WALK);
         }
+
+        transform.rotation = newRot;
+    }
+
+    private void MoveToTarget()
+    {
+        if(targetPosition == null) {
+            Animate(anim, BOOL_IDLE);
+            return;
+        }
+
+        float rotSpeed = 8;
+
+        Vector3 navVec = (Vector3) targetPosition - transform.position;
+        if(navVec.magnitude < 0.5){
+            return;
+        }
+
+
+        navVec = Vector3.Normalize(navVec);
+        navVec = navVec * MOVESPEED_WALK * Time.deltaTime;
+
+        controller.Move(navVec);
+
+        Vector3 vel = controller.velocity;
+        float absVel = vel.magnitude;
+
+
+        Vector3 heading = Vector3.Normalize(vel);
+        if (heading != Vector3.zero)
+        {
+            Animate(anim, BOOL_WALK);
+
+            Quaternion newRot = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(heading), Time.deltaTime * rotSpeed);
+            newRot.x = 0;
+            newRot.z = 0;
+
+            transform.rotation = newRot;
+        }
+        else
+        {
             
+            Animate(anim, BOOL_IDLE);
+        }
+    }
+
+    NavData currentNavData = null;
+    bool waiting = false;
+    private void ActOnQueue()
+    {
+        if(waiting) return;
+
+        if(currentNavData == null){
+            if(navQ.Count == 0) return;
+            else currentNavData = navQ.Dequeue();
+        }   
+
+        
+        if(currentNavData.Next())
+        {
+            NavCommand command = currentNavData.GetCommand();
+
+            if(displayNavMessages) print("Acting on command: " + command.command.ToString() + " ("+ currentNavData.GetIndex() + "/" + currentNavData.Count() + ")");
+
+            Commands cmd = command.command;
+            Vector3 args = command.args;
+
+            switch(cmd)
+            {
+                case Commands.GO: // args = position vector
+                
+                targetRotation = null;
+                targetPosition = args;
+
+                break;
+                case Commands.ROTATE: // args = euler angles
+
+                targetRotation = args;
+
+                break;
+                case Commands.LOOK: // args = direction vector
+
+                // TODO
+
+                break;
+                case Commands.WAIT: // args = time(? ,seconds, milliseconds)
+
+                StartCoroutine(Wait(args));
+
+                break;
+                case Commands.REACT: // args = tbc
+                
+                // TODO
+
+                break;
+            }
+
+        }
+        else
+        {
+            currentNavData = null;
+        }
         
 
 
+    }
+
+    void ClearQueue(){
+        navQ.Clear();
+        currentNavData = null;
+        waiting = false;
+        StopAllCoroutines();
+    }
+
+    private IEnumerator Wait(Vector3 args)
+    {
+        waiting = true;
+        int secs = (int) args.x;
+        yield return new WaitForSeconds(secs);
+        waiting = false;
     }
 
     bool knockedOut = false;

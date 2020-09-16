@@ -4,13 +4,9 @@ using UnityEngine;
 
 public class ClimbBarScript : MonoBehaviour
 {
-    public Transform climbable;
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+    public Transform lower;
+    public Transform middle;
+    public Transform upper;
 
 
     bool triggerEntered = false;
@@ -18,7 +14,7 @@ public class ClimbBarScript : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-       Debug.Log("PLAYER COLLISION");
+       print("PLAYER COLLISION");
 
         this.collider = other;
         triggerEntered = true;
@@ -27,11 +23,11 @@ public class ClimbBarScript : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        Debug.Log("PLAYER COLLISION ENDED");
+        print("PLAYER COLLISION ENDED");
 
         triggerEntered = false;
 
-        other.gameObject.GetComponent<PlayerController>().RevokeVaultPos();
+        other.gameObject.GetComponent<PlayerController>().RevokeClimbPath();
 
     }
 
@@ -40,22 +36,25 @@ public class ClimbBarScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Vector3 vec = climbable.transform.position - transform.position;
-        vec.y = 0;
-        Debug.DrawRay(transform.position, vec, Color.white);
+        // Vector3 vec = climbable.transform.position - transform.position;
+        // vec.y = 0;
+        // Debug.DrawRay(transform.position, vec, Color.white);
 
         if(triggerEntered)
         {
             Vector3 playerPos = collider.transform.position;
 
-            float height = climbable.localScale.y;
-         //   print("HEIGHT: " + height);
+            Vector3 target1 = playerPos;
+            target1.y = lower.transform.position.y;
 
-            playerPos.y = climbable.position.y + height/2 + 5;
+            Vector3 target2 = target1;
+            target2.y += middle.transform.position.y - lower.transform.position.y; 
 
-            Debug.DrawRay(playerPos, vec);
+            Vector3 target3 = target2 + (upper.transform.position - middle.transform.position);
 
-            collider.gameObject.GetComponent<PlayerController>().OfferVaultPos(playerPos + VAULT_FORWARD_FACTOR*vec);
+            List<Vector3> path = new List<Vector3>(){target1, target2, target3};
+
+            collider.gameObject.GetComponent<PlayerController>().OfferClimbPath(path);
         }
 
     }

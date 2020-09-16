@@ -6,23 +6,25 @@ using UnityEngine;
 public class NavPointScript : MonoBehaviour
 {
     // List of times (in seconds) to go through
-    public float[] times;
+    public Commands[] commands;
 
     // List of angles (relative to the sentry facing) to go through
-    public float[] angles;
+    public Vector3[] args;
 
-    // Initial direction this sentry is facing
-    private Quaternion rotation;
-
-    public NavPointData GetNavData()
+    public NavData GetNavData()
     {
-        return new NavPointData(times, angles, rotation);
+        NavData nd = new NavData();
+        
+        if(commands.Length != args.Length) throw new Exception("NavData args unequal lengths");
+
+        for(int i = 0; i < commands.Length; i++)
+        {
+            nd.AddCommand(new NavCommand(commands[i], args[i]));
+        }
+
+        return nd;
     }
 
-    private void Awake()
-    {
-        this.rotation = transform.rotation;
-    }
 
 
 
